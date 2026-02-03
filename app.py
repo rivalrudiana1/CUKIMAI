@@ -2,56 +2,33 @@ import streamlit as st
 import pickle
 import numpy as np
 
+st.set_page_config(page_title="CUKIMAI", page_icon="🎓")
+
 with open("model_knn.pkl", "rb") as f:
     model = pickle.load(f)
+
+with open("vectorizer.pkl", "rb") as f:
+    vectorizer = pickle.load(f)
 
 with open("encoder.pkl", "rb") as f:
     encoder = pickle.load(f)
 
-solusi = {
-"Akademik": [
-"Susun jadwal belajar mingguan",
-"Konsultasi dengan dosen wali",
-"Kurangi aktivitas non-akademik"
-],
-"Keuangan": [
-"Catat pengeluaran bulanan",
-"Cari program beasiswa",
-"Pertimbangkan kerja paruh waktu"
-],
-"Mental": [
-"Manfaatkan layanan konseling kampus",
-"Atur waktu istirahat",
-"Kurangi tekanan tugas berlebihan"
-],
-"Fasilitas": [
-"Laporkan kendala ke unit layanan kampus",
-"Gunakan fasilitas alternatif",
-"Koordinasi dengan pihak terkait"
-],
-"Manajemen waktu": [
-"Gunakan teknik time blocking",
-"Tentukan prioritas tugas",
-"Hindari multitasking berlebihan"
-]
-}
+st.title("CUKIMAI")
+st.write("Consultation and Understanding of Kampus Issues using Machine Learning and Artificial Intelligence")
 
-st.title("MahaSense")
-st.write("Analisis Permasalahan Mahasiswa Berbasis AI")
-
-beban = st.slider("Beban tugas", 1, 5)
-tekanan = st.slider("Tekanan akademik", 1, 5)
-keuangan = st.slider("Masalah keuangan", 1, 5)
-fasilitas = st.slider("Fasilitas kampus", 1, 5)
+teks = st.text_area("Ceritakan masalah kamu")
 
 if st.button("Analisis"):
-    data_input = np.array([[beban, tekanan, keuangan, fasilitas]])
-    pred = model.predict(data_input)
-    hasil = encoder.inverse_transform(pred)[0]
+    if teks.strip() == "":
+        st.warning("Masukkan teks terlebih dahulu")
+    else:
+        X = vectorizer.transform([teks])
+        probs = model.predict_proba(X)[0]
 
-st.subheader("Hasil Analisis AI")
-st.success(hasil)
+        top2_idx = np.argsort(probs)[-2:][::-1]
+        utama = encoder.inverse_transform([top2_idx[0]])[0]
+        pendukung = encoder.inverse_transform([top2_idx[1]])[0]
 
-st.subheader("Rekomendasi Solusi")
-for s in solusi[hasil]:
-    st.write("- " + s)
+        st.success("Hasil Analisis")
+        st.write("Masalah Utama:", utama)
+        st.write("Masalah Pendukung:", pendukung)
