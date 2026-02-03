@@ -1,60 +1,88 @@
 import streamlit as st
 import pickle
-import numpy as np
-from groq import Groq
-from groq_client import generate_solution
+import os
+from groq_client import generate_solution  # pastikan Groq client siap
 
+# File model
+VECTORIZER_FILE = "vectorizer.pkl"
+MODEL_UTAMA_FILE = "model_utama.pkl"
+ENCODER_UTAMA_FILE = "encoder_utama.pkl"
+MODEL_PENDUKUNG_FILE = "model_pendukung.pkl"
+ENCODER_PENDUKUNG_FILE = "encoder_pendukung.pkl"
+MODEL_TINGKAT_FILE = "model_tingkat.pkl"
+ENCODER_TINGKAT_FILE = "encoder_tingkat.pkl"
 
-client = Groq(api_key="ISI_API_KEY_KAMU")
+# Load model dan encoder
+def load_models():
+    files = [VECTORIZER_FILE, MODEL_UTAMA_FILE, ENCODER_UTAMA_FILE,
+             MODEL_PENDUKUNG_FILE, ENCODER_PENDUKUNG_FILE,
+             MODEL_TINGKAT_FILE, ENCODER_TINGKAT_FILE]
+    for file in files:
+        if not os.path.exists(file):
+            st.error(f"File {file} tidak ditemukan. Jalankan train_model.py dulu.")
+            return [None]*7
 
-st.set_page_config(page_title="CUKIMAI", page_icon="🎓")
+    with open(VECTORIZER_FILE, "rb") as f:
+        vectorizer = pickle.load(f)
+    with open(MODEL_UTAMA_FILE, "rb") as f:
+        model_utama = pickle.load(f)
+    with open(ENCODER_UTAMA_FILE, "rb") as f:
+        encoder_utama = pickle.load(f)
+    with open(MODEL_PENDUKUNG_FILE, "rb") as f:
+        model_pendukung = pickle.load(f)
+    with open(ENCODER_PENDUKUNG_FILE, "rb") as f:
+        encoder_pendukung = pickle.load(f)
+    with open(MODEL_TINGKAT_FILE, "rb") as f:
+        model_tingkat = pickle.load(f)
+    with open(ENCODER_TINGKAT_FILE, "rb") as f:
+        encoder_tingkat = pickle.load(f)
 
-with open("model_knn.pkl", "rb") as f:
-    model = pickle.load(f)
+    return vectorizer, model_utama, encoder_utama, model_pendukung, encoder_pendukung, model_tingkat, encoder_tingkat
 
-with open("vectorizer.pkl", "rb") as f:
-    vectorizer = pickle.load(f)
+# Fungsi klasifikasi multi-output
+def klasifikasi(teks, vectorizer, model_utama, encoder_utama,
+                model_pendukung, encoder_pendukung, model_tingkat, encoder_tingkat):
+    X_vec = vectorizer.transform([teks])
+    kategori_utama = encoder_utama.inverse_transform(model_utama.predict(X_vec))[0]
+    kategori_pendukung = encoder_pendukung.inverse_transform(model_pendukung.predict(X_vec))[0]
+    tingkat = encoder_tingkat.inverse_transform(model_tingkat.predict(X_vec))[0]
+    return kategori_utama, kategori_pendukung, tingkat
 
-with open("encoder.pkl", "rb") as f:
-    encoder = pickle.load(f)
+# Streamlit config
+st.set_page_config(page_title="CUKIMAI", page_icon="🎓", layout="centered")
+st.title("🎓 CUKIMAI")
+st.subheader("AI Konselor Mahasiswa: Analisis Masalah, Solusi, dan Motivasi")
+st.write(
+    "Tuliskan masalahmu sebagai mahasiswa. "
+    "CUKIMAI akan menganalisis kategori utama & pendukung, tingkat masalah, solusi, to do list, dan motivasi."
+)
 
-st.title("CUKIMAI")
-st.write("Consultation and Understanding of Kampus Issues using Machine Learning and Artificial Intelligence")
+teks = st.text_area(
+    "Masukkan masalah kamu",
+    placeholder="Contoh: saya sulit membagi waktu antara akademik dan organisasi"
+)
 
-teks = st.text_area("Ceritakan masalah kamu")
+vectorizer, model_utama, encoder_utama, model_pendukung, encoder_pendukung, model_tingkat, encoder_tingkat = load_models()
 
-def groq_solusi(teks, utama, pendukung):
-    prompt = f"""
-Kamu adalah konselor mahasiswa.
-Masalah utama: {utama}
-Masalah pendukung: {pendukung}
-Curhat: {teks}
-
-Berikan solusi singkat dan to do list prioritas.
-"""
-    response = client.chat.completions.create(
-        model="llama3-8b-8192",
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return response.choices[0].message.content
-
-if st.button("Analisis"):
+if st.button("Analisis Masalah"):
     if teks.strip() == "":
-        st.warning("Masukkan teks terlebih dahulu")
+        st.warning("Masukkan permasalahan terlebih dahulu.")
+    elif not vectorizer:
+        st.error("Model belum tersedia.")
     else:
-        X = vectorizer.transform([teks])
-        probs = model.predict_proba(X)[0]
+        with st.spinner("CUKIMAI sedang menganalisis..."):
+            utama, pendukung, tingkat = klasifikasi(teks, vectorizer, model_utama, encoder_utama,
+                                                    model_pendukung, encoder_pendukung, model_tingkat, encoder_tingkat)
+            solusi = generate_solution(teks, utama, pendukung, tingkat)
 
-        top2 = np.argsort(probs)[-2:][::-1]
-        utama = encoder.inverse_transform([top2[0]])[0]
-        pendukung = encoder.inverse_transform([top2[1]])[0]
+        st.success("Analisis selesai")
+        st.markdown("### 🧠 Hasil Analisis AI")
+        st.write(f"**Kategori Utama:** {utama}")
+        st.write(f"**Kategori Pendukung:** {pendukung}")
+        st.write(f"**Tingkat Masalah:** {tingkat}")
 
-        st.subheader("Hasil Analisis AI")
-        st.write("Masalah Utama:", utama)
-        st.write("Masalah Pendukung:", pendukung)
-
-        with st.spinner("AI sedang menyusun solusi"):
-            solusi = generate_solution(teks, utama, pendukung)
-
-        st.subheader("Solusi dan Skala Prioritas")
+        st.markdown("### 💡 Solusi & To Do List + Motivasi")
         st.write(solusi)
+
+st.markdown("---")
+st.caption("CUKIMAI | AI Konselor Mahasiswa | Support System untuk Mahasiswa")

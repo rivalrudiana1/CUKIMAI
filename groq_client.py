@@ -4,33 +4,34 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-client = Groq(
-    api_key=os.getenv("GROQ_API_KEY")
-)
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-def generate_solution(problem_text, kategori_utama, kategori_pendukung):
+def generate_solution(teks_masalah, kategori_utama, kategori_pendukung, tingkat):
     prompt = f"""
 Kamu adalah AI konselor mahasiswa.
 
-Curhat mahasiswa:
-{problem_text}
+Masalah: {teks_masalah}
 
-Kategori masalah utama: {kategori_utama}
-Kategori masalah pendukung: {kategori_pendukung}
+Kategori Utama: {kategori_utama}
+Kategori Pendukung: {kategori_pendukung}
+Tingkat Masalah: {tingkat}
 
 Tugas kamu:
-1. Berikan solusi yang realistis dan bisa dilakukan mahasiswa.
-2. Buat to do list prioritas maksimal 5 poin.
-3. Urutkan dari yang paling penting.
-4. Gunakan bahasa sederhana dan langsung.
-5. Jangan terlalu panjang.
+1. Berikan solusi konkret dan singkat.
+2. Buat skala prioritas (to do list) yang harus dikerjakan mahasiswa.
+3. Berikan kata motivasi/semangat dari tokoh inspiratif.
+4. Format jawaban:
+Kategori Utama: ...
+Kategori Pendukung: ...
+Solusi: ...
+To Do List:
+- ...
+- ...
+Motivasi: ...
+Gunakan bahasa santai mahasiswa.
 """
     response = client.chat.completions.create(
         model="llama-3.1-8b-instant",
-        messages=[
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.4
+        messages=[{"role": "user", "content": prompt}]
     )
-
-    return response.choices[0].message.content.strip()
+    return response.choices[0].message.content
