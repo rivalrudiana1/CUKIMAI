@@ -19,7 +19,7 @@ Tingkat Masalah: {tingkat}
 Tugas kamu:
 1. Berikan solusi konkret dan singkat.
 2. Buat skala prioritas (to do list) yang harus dikerjakan mahasiswa.
-3. Berikan kata motivasi/semangat dari tokoh inspiratif.
+3. Berikan kata motivasi/semangat dari tokoh tokoh besar, bisa tookh fiktif maupun nyata.
 4. Format jawaban:
 Kategori Utama: ...
 Kategori Pendukung: ...
